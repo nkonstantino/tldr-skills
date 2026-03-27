@@ -50,9 +50,10 @@ The API is also exposed as a remote MCP server, giving Claude structured tool de
 **Endpoint:** `https://tldr-skills.vercel.app/api/mcp`
 
 **Add to Claude.ai:**
-1. Open your Claude.ai project → **Settings → Integrations**
-2. Click **Add integration** and paste the endpoint URL above
-3. If `MCP_API_KEY` is set in Vercel, enter it as the Bearer token when prompted
+1. Go to **Settings → Connectors**
+2. Click **Add custom connector**
+3. Enter a name (e.g. `TLDR Skills`) and paste the endpoint URL above
+4. Click **Add**
 
 **Available tools:**
 
