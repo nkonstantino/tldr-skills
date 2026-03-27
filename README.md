@@ -20,9 +20,18 @@ vercel --prod
 #   WEBHOOK_URL = https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06
 #   PING_NAME   = Nick Konstantino
 #   CRON_SECRET = <any random string>
+#   MCP_API_KEY = <any random string>  (optional — secures /api/mcp)
 ```
 
-The Vercel cron runs daily at midnight UTC (Hobby tier limitation — max once/day). A GitHub Actions workflow (`.github/workflows/ping.yml`) supplements this with every-5-minute pings for continuous evidence on webhook.site. Set the `WEBHOOK_URL` repo secret on GitHub to activate it.
+**Persistent task store (Upstash Redis):**
+
+Tasks are stored in Upstash Redis so they survive Vercel cold starts. To set it up:
+
+1. In your Vercel project dashboard → **Storage → Connect Store → Upstash Redis** (free tier)
+2. Vercel auto-populates `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+3. Run `vercel env pull` to sync them locally for development
+
+The Vercel cron runs daily at midnight UTC (Hobby tier limitation). A GitHub Actions workflow (`.github/workflows/ping.yml`) supplements this — it fires every 5 minutes, directly pings the webhook, and also calls `/api/cron/scheduler` to fire any tasks stored in Redis. Set the `WEBHOOK_URL` repo secret on GitHub to activate it.
 
 To test locally:
 ```bash
@@ -66,12 +75,14 @@ You can verify the server is healthy at `GET /api/mcp` — it returns a tool man
 api/
   mcp.js               POST — MCP server (Streamable HTTP transport)
   ping.js              POST — sends name+timestamp to any webhook
-  cron/ping.js         GET  — Vercel cron handler (triggers ping)
+  cron/ping.js         GET  — Vercel cron handler (daily hardcoded ping)
+  cron/scheduler.js    GET  — evaluates and fires due tasks from the store
   tasks/index.js       GET/POST — list and create tasks
   tasks/[id].js        GET/PATCH/DELETE — manage individual tasks
 lib/
   webhook.js           Shared ping logic (single source of truth)
-  store.js             In-memory task store with schema validation
+  store.js             Task store backed by Upstash Redis REST API
+  cron-eval.js         Minimal 5-field cron expression evaluator (no deps)
 scheduler/SKILL.md     Scheduler skill for Claude (interactive/automated)
 ping/SKILL.md          Ping skill for Claude (interactive/automated)
 ```

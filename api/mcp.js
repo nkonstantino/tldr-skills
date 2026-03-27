@@ -221,31 +221,31 @@ async function callTool(name, args = {}) {
     }
 
     case 'list_tasks': {
-      const tasks = listTasks();
+      const tasks = await listTasks();
       if (tasks.length === 0) return toolContent('No tasks scheduled yet.');
       return toolContent(tasks);
     }
 
     case 'create_task': {
-      const task = createTask(args);
+      const task = await createTask(args);
       return toolContent(task);
     }
 
     case 'update_task': {
       const { id, ...updates } = args;
-      const task = updateTask(id, updates);
+      const task = await updateTask(id, updates);
       if (!task) return toolContent(`Task ${id} not found.`, true);
       return toolContent(task);
     }
 
     case 'delete_task': {
-      const deleted = deleteTask(args.id);
+      const deleted = await deleteTask(args.id);
       if (!deleted) return toolContent(`Task ${args.id} not found.`, true);
       return toolContent({ deleted: true, id: args.id });
     }
 
     case 'run_task': {
-      const task = getTask(args.id);
+      const task = await getTask(args.id);
       if (!task) return toolContent(`Task ${args.id} not found.`, true);
       if (task.status === 'paused') {
         return toolContent(`Task "${task.name}" is paused. Resume it first with update_task.`, true);
@@ -265,7 +265,7 @@ async function callTool(name, args = {}) {
         };
       }
 
-      updateTask(args.id, {
+      await updateTask(args.id, {
         lastRun: new Date().toISOString(),
         runCount: (task.runCount || 0) + 1,
       });

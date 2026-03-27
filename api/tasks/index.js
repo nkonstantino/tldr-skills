@@ -2,12 +2,13 @@ const { createTask, listTasks } = require('../../lib/store');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
-    return res.status(200).json({ tasks: listTasks() });
+    const tasks = await listTasks();
+    return res.status(200).json({ tasks });
   }
 
   if (req.method === 'POST') {
     try {
-      const task = createTask(req.body || {});
+      const task = await createTask(req.body || {});
       return res.status(201).json({ task });
     } catch (err) {
       return res.status(400).json({ error: err.message });
