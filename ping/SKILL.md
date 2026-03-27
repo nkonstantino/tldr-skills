@@ -30,7 +30,7 @@ Always use this exact shape. Do not add or remove fields.
 
 ## Default Configuration
 
-- **Webhook URL:** `https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913`
+- **Webhook URL:** `https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06`
 - **Name:** `Nick Konstantino`
 - **API Endpoint:** `POST /api/ping`
 
@@ -46,14 +46,14 @@ Follow these steps when a user asks you to ping the webhook:
 
    {
      "name": "Nick Konstantino",
-     "webhookUrl": "https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913"
+     "webhookUrl": "https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06"
    }
    ```
 3. **Report the result.** On success, tell the user: "Ping sent at {timestamp}." On failure, report the status code and error.
 
 If you don't have an HTTP tool available, construct and display the `curl` command so the user can run it:
 ```bash
-curl -X POST https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913 \
+curl -X POST https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06 \
   -H "Content-Type: application/json" \
   -d '{"name":"Nick Konstantino","timestamp":"2026-03-26T12:00:00.000Z","source":"interactive"}'
 ```
@@ -66,7 +66,7 @@ When invoked by the Scheduler skill as a target, this skill expects:
 ```json
 {
   "name": "Nick Konstantino",
-  "webhookUrl": "https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913"
+  "webhookUrl": "https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06"
 }
 ```
 

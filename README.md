@@ -3,7 +3,7 @@
 Two Claude Skills — **Scheduler** and **Ping** — wired together with a Vercel cron that proves they work.
 
 **Vercel URL:** https://tldr-skills.vercel.app
-**Webhook target:** `https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913`
+**Webhook target:** `https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06`
 
 ---
 
@@ -17,7 +17,7 @@ npm i -g vercel
 vercel --prod
 
 # Set environment variables in Vercel dashboard:
-#   WEBHOOK_URL = https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913
+#   WEBHOOK_URL = https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06
 #   PING_NAME   = Nick Konstantino
 #   CRON_SECRET = <any random string>
 ```

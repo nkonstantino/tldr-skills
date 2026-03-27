@@ -36,7 +36,7 @@ Every task follows this structure. Use it exactly when creating or displaying ta
     "skill": "ping-webhook",
     "payload": {
       "name": "Nick Konstantino",
-      "webhookUrl": "https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913"
+      "webhookUrl": "https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06"
     }
   },
   "status": "active",
@@ -143,7 +143,7 @@ The Scheduler never needs to be modified to support a new skill. This is the cor
 - **Name:** ping-production-webhook
 - **Schedule:** Every 5 minutes (`*/5 * * * *`)
 - **Target:** ping-webhook skill
-- **Payload:** `{ "name": "Nick Konstantino", "webhookUrl": "https://webhook.site/47cdccd9-78bb-420d-bce2-9f34d05df913" }`
+- **Payload:** `{ "name": "Nick Konstantino", "webhookUrl": "https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06" }`
 
 Does that look right?
 
