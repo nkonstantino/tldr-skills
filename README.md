@@ -34,10 +34,37 @@ curl -X POST http://localhost:3000/api/ping \
 
 ---
 
+## MCP Server (Claude.ai Integration)
+
+The API is also exposed as a remote MCP server, giving Claude structured tool definitions instead of relying on SKILL.md prose. This means more reliable tool calls and no need to describe HTTP contracts in natural language.
+
+**Endpoint:** `https://tldr-skills.vercel.app/api/mcp`
+
+**Add to Claude.ai:**
+1. Open your Claude.ai project → **Settings → Integrations**
+2. Click **Add integration** and paste the endpoint URL above
+3. If `MCP_API_KEY` is set in Vercel, enter it as the Bearer token when prompted
+
+**Available tools:**
+
+| Tool | Description |
+|------|-------------|
+| `send_ping` | POST a ping payload to a webhook URL |
+| `list_tasks` | Return all scheduled tasks |
+| `create_task` | Create a new scheduled task |
+| `update_task` | Pause, resume, or modify a task |
+| `delete_task` | Permanently delete a task |
+| `run_task` | Execute a task immediately, bypassing its schedule |
+
+You can verify the server is healthy at `GET /api/mcp` — it returns a tool manifest without needing a JSON-RPC request.
+
+---
+
 ## Project Structure
 
 ```
 api/
+  mcp.js               POST — MCP server (Streamable HTTP transport)
   ping.js              POST — sends name+timestamp to any webhook
   cron/ping.js         GET  — Vercel cron handler (triggers ping)
   tasks/index.js       GET/POST — list and create tasks
@@ -45,8 +72,8 @@ api/
 lib/
   webhook.js           Shared ping logic (single source of truth)
   store.js             In-memory task store with schema validation
-scheduler/SKILL.md     Scheduler skill for Claude
-ping/SKILL.md          Ping skill for Claude
+scheduler/SKILL.md     Scheduler skill for Claude (interactive/automated)
+ping/SKILL.md          Ping skill for Claude (interactive/automated)
 ```
 
 ---
