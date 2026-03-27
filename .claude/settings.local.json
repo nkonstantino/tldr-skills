@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(vercel --version)",
+      "Bash(npx vercel:*)"
+    ]
+  }
+}
