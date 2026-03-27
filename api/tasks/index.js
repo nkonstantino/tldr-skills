@@ -1,6 +1,10 @@
 const { createTask, listTasks } = require('../../lib/store');
+const { setCors } = require('../../lib/cors');
 
 module.exports = async function handler(req, res) {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method === 'GET') {
     const tasks = await listTasks();
     return res.status(200).json({ tasks });
