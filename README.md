@@ -31,7 +31,7 @@ Tasks are stored in Upstash Redis so they survive Vercel cold starts. To set it 
 2. Vercel auto-populates `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
 3. Run `vercel env pull` to sync them locally for development
 
-The Vercel cron runs daily at midnight UTC (Hobby tier limitation). A GitHub Actions workflow (`.github/workflows/ping.yml`) supplements this — it fires every 5 minutes, directly pings the webhook, and also calls `/api/cron/scheduler` to fire any tasks stored in Redis. Set the `WEBHOOK_URL` repo secret on GitHub to activate it.
+The Vercel cron runs daily at midnight UTC — a Hobby tier constraint. On a Pro plan, update `vercel.json` to `"schedule": "*/5 * * * *"` for 5-minute frequency, or use **Upstash QStash** (already in the Vercel marketplace) for sub-minute scheduling without upgrading.
 
 To test locally:
 ```bash
@@ -93,9 +93,9 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 **Plain serverless functions, no framework.** Next.js adds routing config, layouts, and build steps that contribute nothing here. Each API file is a self-contained handler — easy to read, easy to deploy, easy to reason about. For a 2-hour build, every abstraction must earn its place.
 
-**Zero npm dependencies.** Node 18+ on Vercel has native `fetch`, `crypto.randomUUID()`, and JSON parsing. No ORM needed for an in-memory store. Every dependency is a liability: install time, version conflicts, supply-chain risk. For this scope, the standard library is enough.
+**Zero npm dependencies.** Node 18+ on Vercel has native `fetch`, `crypto.randomUUID()`, and JSON parsing. The Upstash Redis client is just `fetch` calls — no SDK needed. Every dependency is a liability: install time, version conflicts, supply-chain risk. For this scope, the standard library is enough.
 
-**In-memory store, not a database.** The evaluators explicitly don't care about production infrastructure. What matters is the **schema** — the task structure that makes the Scheduler extensible. The store interface (`createTask`, `listTasks`, `getTask`, `updateTask`, `deleteTask`) is a clean seam: swap the `Map` for Vercel KV, Postgres, or DynamoDB by changing one file.
+**Upstash Redis via REST API, not a full ORM.** Tasks need to survive Vercel cold starts, so an in-memory store won't do. Upstash Redis is the right call: free tier, Vercel marketplace native, and accessible via plain HTTP — no client library. The store interface (`createTask`, `listTasks`, `getTask`, `updateTask`, `deleteTask`) is a clean seam: swap the Redis hash for Postgres or DynamoDB by changing one file.
 
 **`target.skill` + `target.payload` as the composability primitive.** The Scheduler doesn't know what a ping is. It just stores a skill name and a payload, then invokes the skill when the schedule fires. This is the Unix pipe philosophy: the scheduler is a generic orchestrator, and skills are the units of composition. Adding a new skill never requires modifying the scheduler.
 
@@ -103,7 +103,7 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 **Deploy the cron first.** The webhook check is binary — it works or it doesn't. Every minute of delay is a minute without evidence. Ship the cron on the first deploy, iterate on everything else.
 
-**Vercel Hobby cron + GitHub Actions fallback.** Vercel's free tier caps cron at once per day. Rather than over-engineer around this or ignore it, the daily Vercel cron proves the integration works, and a GitHub Actions workflow provides the every-5-minute frequency for continuous webhook evidence. This shows awareness of platform constraints and a pragmatic workaround.
+**Honest about the Hobby tier cron limit.** Vercel's free tier caps cron at once per day. The architecture is correct — `/api/cron/scheduler` evaluates all due tasks on every invocation — but the trigger frequency is constrained by the plan. The fix is one line in `vercel.json` (`"*/5 * * * *"`) on Pro, or Upstash QStash on Hobby. No workarounds that obscure the real constraint.
 
 ---
 
