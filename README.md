@@ -1,9 +1,9 @@
 # TLDR scheduler
 
-Two Claude scheduler — **Scheduler** and **Ping** — wired together with a Vercel cron that proves they work.
+Two Claude skills — **Scheduler** and **Ping** — wired together with a Vercel cron that proves they work.
 
 **Vercel URL:** https://tldr-scheduler.vercel.app
-**Webhook target:** `https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5`
+**Webhook target:** `https://webhook.site/07ff1583-dbde-4707-b27d-9424128ae442`
 
 ---
 
@@ -17,7 +17,7 @@ npm i -g vercel
 vercel --prod
 
 # Set environment variables in Vercel dashboard:
-#   WEBHOOK_URL = https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5
+#   WEBHOOK_URL = https://webhook.site/07ff1583-dbde-4707-b27d-9424128ae442
 #   PING_NAME   = Nick Konstantino
 #   CRON_SECRET = <any random string>
 #   MCP_API_KEY = <any random string>  (optional — secures /api/mcp)
@@ -92,9 +92,9 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 ## Design Decisions
 
-**Dual-mode scheduler (interactive + automated).** Every SKILL.md defines two invocation paths: interactive (conversational, with confirmations and clarifications) and automated (machine-callable, with an explicit payload contract and no prompting). This directly solves the "must work in both Claude.ai and the Scheduler" requirement without duplicating skill logic. scheduler are also kept well under a ~500 line limit. 'Length' was listed under the "What we don't care about" section, so this was done as a deliberate discipline to prevent context bloat. A skill that requires a wall of prose to describe is usually a skill that's doing too much.
+**Dual-mode skills (interactive + automated).** Every SKILL.md defines two invocation paths: interactive (conversational, with confirmations and clarifications) and automated (machine-callable, with an explicit payload contract and no prompting). This directly solves the "must work in both Claude.ai and the Scheduler" requirement without duplicating skill logic. Skills are also kept well under a ~500 line limit. 'Length' was listed under the "What we don't care about" section, so this was done as a deliberate discipline to prevent context bloat. A skill that requires a wall of prose to describe is usually a skill that's doing too much.
 
-**scheduler instructs its own setup.** Each SKILL.md includes a Setup section that instructs Claude Code to register the MCP server if it isn't already configured. In Claude.ai, where shell access isn't available, the scheduler fall back to REST automatically — the MCP connector can still be added manually via Settings → Connectors, but it isn't a hard requirement to read the list. If a Claude.ai user wants to make any changes to their task list, the skill will walk them through setting up the MCP server to fully unlock them. This is a hard requirement that Anthropic has put into place, as `web_fetch` only works for GET requests, and anything that requires POST is in accessible while the network blocks curl. If we were to devise a way to jailbreak Claude and allow curl requests without the mcp server, that would be a serious security concern that could allow unmonitored or malignant skills to run rampant.
+**Each skill instructs its own setup.** Each SKILL.md includes a Setup section that instructs Claude Code to register the MCP server if it isn't already configured. In Claude.ai, where shell access isn't available, skills fall back to REST automatically — the MCP connector can still be added manually via Settings → Connectors, but it isn't a hard requirement to read the list. If a Claude.ai user wants to make any changes to their task list, the skill will walk them through setting up the MCP server to fully unlock them. This is a hard requirement that Anthropic has put into place, as `web_fetch` only works for GET requests, and anything that requires POST is in accessible while the network blocks curl. If we were to devise a way to jailbreak Claude and allow curl requests without the mcp server, that would be a serious security concern that could allow unmonitored or malignant skills to run rampant.
 
 **Plain serverless functions, no framework.** Next.js adds routing config, layouts, and build steps that contribute nothing here. Each API file is a self-contained handler — easy to read, easy to deploy, easy to reason about. Every abstraction must earn its place.
 
@@ -102,9 +102,9 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 **Upstash Redis via REST API, not a full ORM.** Tasks need to survive Vercel cold starts, so an in-memory store won't do. Upstash Redis is the right call: Vercel marketplace native, accessible via plain HTTP, no client library. The store interface (`createTask`, `listTasks`, `getTask`, `updateTask`, `deleteTask`) is a clean seam: swap the Redis hash for Postgres or DynamoDB by changing one file.
 
-**`target.skill` + `target.payload` as the composability primitive.** The Scheduler doesn't know what a ping is. It stores a skill name and a payload, then invokes the skill when the schedule fires. This is the Unix pipe philosophy: the scheduler is a generic orchestrator, scheduler are the units of composition. Adding a new skill never requires modifying the scheduler. Currently, `ping-webhook` is the only skill with full execution wired up — other scheduler return an invocation contract (`{ triggered: true, skill, payload }`) that's ready to be handled as new scheduler are implemented.
+**`target.skill` + `target.payload` as the composability primitive.** The Scheduler doesn't know what a ping is. It stores a skill name and a payload, then invokes the skill when the schedule fires. This is the Unix pipe philosophy: the scheduler is a generic orchestrator, skills are the units of composition. Adding a new skill never requires modifying the scheduler. Currently, `ping-webhook` is the only skill with full execution wired up — other skills return an invocation contract (`{ triggered: true, skill, payload }`) that's ready to be handled as new skills are implemented.
 
-**MCP is thin now, but intentional.** Right now, pinging a webhook isn't complex enough to need a full MCP layer — but building it didn't take long, and it speaks to the broader vision. As HubSpot and Slack scheduler get added, entire multi-step workflows (fetch → diff → interpret → notify) can be encapsulated as a single MCP tool. The layer is there when it needs to carry real weight.
+**MCP is thin now, but intentional.** Right now, pinging a webhook isn't complex enough to need a full MCP layer — but building it didn't take long, and it speaks to the broader vision. As HubSpot and Slack skills get added, entire multi-step workflows (fetch → diff → interpret → notify) can be encapsulated as a single MCP tool. The layer is there when it needs to carry real weight.
 
 **Vercel cron + Redis as the scheduling backbone.** Claude's memory is ephemeral and inaccessible between sessions so it can't be the scheduler's source of truth. Redis stores task definitions as JSON blobs that the cron endpoint reads on every tick. The cron loops through active tasks, fires any that are due, and updates `lastRun` and `nextRun`. The architecture is correct at any tick frequency; the only knob is `vercel.json`.
 
@@ -123,9 +123,9 @@ For any skill to work in both Claude.ai (interactive) and the Scheduler (automat
 3. **An automated contract** — an input payload schema and a return schema, with no user prompts.
 4. **A skill name** — a stable identifier the Scheduler uses in `target.skill`.
 
-The Scheduler references scheduler by name and passes their expected payload. scheduler don't know they're being scheduled. This decoupling means any new skill automatically works with the Scheduler if it follows the convention above.
+The Scheduler references skills by name and passes their expected payload. Skills don't know they're being scheduled. This decoupling means any new skill automatically works with the Scheduler if it follows the convention above.
 
-### Automations with HubSpot and Slack scheduler
+### Automations with HubSpot and Slack Skills
 
 **1. Check Deal Status + Celebrate Closure**
 
@@ -143,7 +143,7 @@ When a deal moves to Closed/Won, schedule a one-shot task 24 hours out. That tas
 
 ### What This Gets You
 
-These three patterns (change detection, proactive nudging, and event-triggered one-shots) cover the majority of sales workflow automation. They all compose from the same building blocks: a generic scheduler, scheduler with standardized contracts, and a task schema that separates "when" from "what." No skill needs to know about any other skill. The Scheduler doesn't need to know what it's scheduling. That's the whole point.
+These three patterns (change detection, proactive nudging, and event-triggered one-shots) cover the majority of sales workflow automation. They all compose from the same building blocks: a generic scheduler, skills with standardized contracts, and a task schema that separates "when" from "what." No skill needs to know about any other skill. The Scheduler doesn't need to know what it's scheduling. That's the whole point.
 
 ---
 

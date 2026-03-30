@@ -27,7 +27,7 @@ claude mcp add tldr-scheduler --transport http https://tldr-scheduler.vercel.app
 
 ## Defaults
 
-- **Webhook URL:** `https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5`
+- **Webhook URL:** `https://webhook.site/07ff1583-dbde-4707-b27d-9424128ae442`
 - **Name:** `Nick Konstantino`
 
 ## Interactive Mode
@@ -41,7 +41,7 @@ If the user hasn't specified a name or URL, use the defaults above.
 POST {BASE_URL}/api/ping
 Content-Type: application/json
 
-{ "name": "Nick Konstantino", "webhookUrl": "https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5" }
+{ "name": "Nick Konstantino", "webhookUrl": "https://webhook.site/07ff1583-dbde-4707-b27d-9424128ae442" }
 ```
 
 Report the result: "Ping sent at {timestamp}." on success, or the status code and error on failure.

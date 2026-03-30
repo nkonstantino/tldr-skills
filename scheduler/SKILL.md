@@ -1,7 +1,7 @@
 ---
 name: task-scheduler
 description: >
-  Create, list, update, delete, and run scheduled tasks that execute other scheduler
+  Create, list, update, delete, and run scheduled tasks that execute other skills
   automatically. Use when the user says "schedule", "every hour", "set up a cron",
   "run this on a schedule", "automate this", "create a recurring task", or wants to
   manage any automated workflow.
@@ -28,7 +28,7 @@ claude mcp add tldr-scheduler --transport http https://tldr-scheduler.vercel.app
 
 ## What This Skill Does
 
-Manages scheduled tasks that execute other scheduler at defined intervals. Each task has a schedule (cron, one-shot, or manual) and a target (which skill to run, with what payload).
+Manages scheduled tasks that execute other skills at defined intervals. Each task has a schedule (cron, one-shot, or manual) and a target (which skill to run, with what payload).
 
 ## Task Schema
 
@@ -46,7 +46,7 @@ Manages scheduled tasks that execute other scheduler at defined intervals. Each 
     "skill": "ping-webhook",
     "payload": {
       "name": "Nick Konstantino",
-      "webhookUrl": "https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5"
+      "webhookUrl": "https://webhook.site/07ff1583-dbde-4707-b27d-9424128ae442"
     }
   },
   "status": "active | paused | completed | failed",
