@@ -92,7 +92,7 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 ## Design Decisions
 
-**Dual-mode scheduler (interactive + automated).** Every SKILL.md defines two invocation paths: interactive (conversational, with confirmations and clarifications) and automated (machine-callable, with an explicit payload contract and no prompting). This directly solves the "must work in both Claude.ai and the Scheduler" requirement without duplicating skill logic. scheduler are also kept well under a ~500 line limit — not because of a hard constraint here, but as a deliberate discipline to prevent context bloat. A skill that requires a wall of prose to describe is usually a skill that's doing too much.
+**Dual-mode scheduler (interactive + automated).** Every SKILL.md defines two invocation paths: interactive (conversational, with confirmations and clarifications) and automated (machine-callable, with an explicit payload contract and no prompting). This directly solves the "must work in both Claude.ai and the Scheduler" requirement without duplicating skill logic. scheduler are also kept well under a ~500 line limit. 'Length' was listed under the "What we don't care about" section, so this was done as a deliberate discipline to prevent context bloat. A skill that requires a wall of prose to describe is usually a skill that's doing too much.
 
 **scheduler handle their own setup.** Each SKILL.md includes a Setup section that instructs Claude Code to register the MCP server if it isn't already configured. In Claude.ai, where shell access isn't available, the scheduler fall back to REST automatically — the MCP connector can still be added manually via Settings → Connectors, but it isn't a hard requirement.
 
@@ -106,13 +106,13 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 **MCP is thin now, but intentional.** Right now, pinging a webhook isn't complex enough to need a full MCP layer — but building it didn't take long, and it speaks to the broader vision. As HubSpot and Slack scheduler get added, entire multi-step workflows (fetch → diff → interpret → notify) can be encapsulated as a single MCP tool. The layer is there when it needs to carry real weight.
 
-**Vercel cron + Redis as the scheduling backbone.** Claude's memory is ephemeral and inaccessible between sessions — it can't be the scheduler's source of truth. Redis stores task definitions as JSON blobs that the cron endpoint reads on every tick. The cron loops through active tasks, fires any that are due, and updates `lastRun` and `nextRun`. The architecture is correct at any tick frequency; the only knob is `vercel.json`.
+**Vercel cron + Redis as the scheduling backbone.** Claude's memory is ephemeral and inaccessible between sessions so it can't be the scheduler's source of truth. Redis stores task definitions as JSON blobs that the cron endpoint reads on every tick. The cron loops through active tasks, fires any that are due, and updates `lastRun` and `nextRun`. The architecture is correct at any tick frequency; the only knob is `vercel.json`.
 
 ---
 
 ## Composability
 
-Every workflow is an MCP tooling opportunity. The current setup is straightforward to extend — HubSpot and Slack each have existing MCP servers, so the integration layer is mostly about defining the right skill contracts and wiring them into the Scheduler.
+Every workflow is an MCP tooling opportunity. The current setup is straightforward to extend. For example, HubSpot and Slack each have existing MCP servers so the integration layer is mostly about defining the right skill contracts and wiring them into the Scheduler.
 
 ### The Core Convention
 
@@ -129,18 +129,26 @@ The Scheduler references scheduler by name and passes their expected payload. sc
 
 **1. Check Deal Status + Celebrate Closure**
 
-At a set interval, the Scheduler calls a HubSpot skill to fetch current deal states and diff them against the last stored snapshot in Redis. If a deal moved to Closed Won, that delta gets passed to Claude via API — not to produce a raw data dump, but to generate something worth reading: a message that puts the win in context (team member, deal size, progress toward quota). Claude's output goes straight to Slack via the Slack skill. The snapshot updates. Next tick, same check.
+At a set interval, the Scheduler calls a HubSpot skill to fetch current deal states and diff them against the last stored snapshot in Redis. If a deal moved to Closed/Won, that delta gets passed to Claude via API, not to produce a raw data dump, but to generate something worth reading: a message that puts the win in context (team member, deal size, progress toward quota). Claude's output goes straight to Slack via the Slack skill. The snapshot updates. Next tick, same check.
 
-This pattern — fetch → diff → interpret → notify — is the template for most sales intelligence automations.
+This pattern (fetch → diff → interpret → notify) is the template for most sales intelligence automations.
 
 **2. Deal Follow-Up Nudge**
 
-Identify deals that have gone cold: no activity in 14+ days, or manually flagged for follow-up by a rep. On a Friday morning schedule, the HubSpot skill surfaces these deals with owner info, and the Slack skill sends a direct message to each owner — not a channel blast, a personal nudge. The message can include the last activity date, the deal value, and a suggested next step generated by Claude. Optionally chains to calendar or email tooling to make acting on the nudge frictionless.
+Identify deals that have gone cold: no activity in 14+ days, or manually flagged for follow-up by a rep. On a Friday morning schedule, the HubSpot skill surfaces these deals with owner info, and the Slack skill sends a direct message to each owner. The message can include the last activity date, the deal value, and a suggested next step generated by Claude. Optionally chains to calendar or email tooling to make acting on the nudge frictionless.
 
 **3. New Deal Onboarding**
 
-When a deal moves to Closed Won, schedule a one-shot task 24 hours out. That task pulls company and contact info from HubSpot and uses the Slack skill to notify the onboarding team with everything they need to kick off: company name, deal size, key contacts, and a Claude-generated summary of any notes from the deal record. The `once` schedule type handles the delay; the Scheduler's `lastRun` tracking ensures it fires exactly once.
+When a deal moves to Closed/Won, schedule a one-shot task 24 hours out. That task pulls company and contact info from HubSpot and uses the Slack skill to notify the onboarding team with everything they need to kick off: company name, deal size, key contacts, and a Claude-generated summary of any notes from the deal record. The `once` schedule type handles the delay; the Scheduler's `lastRun` tracking ensures it fires exactly once.
 
 ### What This Gets You
 
-These three patterns — change detection, proactive nudging, and event-triggered one-shots — cover the majority of sales workflow automation. They all compose from the same building blocks: a generic scheduler, scheduler with standardized contracts, and a task schema that separates "when" from "what." No skill needs to know about any other skill. The Scheduler doesn't need to know what it's scheduling. That's the whole point.
+These three patterns (change detection, proactive nudging, and event-triggered one-shots) cover the majority of sales workflow automation. They all compose from the same building blocks: a generic scheduler, scheduler with standardized contracts, and a task schema that separates "when" from "what." No skill needs to know about any other skill. The Scheduler doesn't need to know what it's scheduling. That's the whole point.
+
+---
+
+## Interactive vs Automated Skill Modes - Making the Scheduler work for any Claude surface
+
+Each skill is written with two execution modes so the same capability can serve both people and systems. **Interactive mode** is conversational: it asks clarifying questions, confirms destructive actions, and explains outcomes in user-friendly language. **Automated mode** is contract-driven: it accepts structured input, executes without back-and-forth, and returns predictable structured output for orchestration.
+
+This split is what makes skills reusable. Claude.ai can use the interactive path when a human is driving, while the Scheduler can use the automated path when a job is running on a timer. One skill definition, two interfaces, no forks or adapter code.
