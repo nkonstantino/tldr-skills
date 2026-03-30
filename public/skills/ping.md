@@ -6,95 +6,56 @@ description: >
   a webhook notification. Works both interactively and as an automated task.
 ---
 
-## What This Skill Does
+## Base URL
 
-POSTs a JSON payload containing a person's name and an ISO-8601 timestamp to a webhook URL. The payload is intentionally minimal — it proves connectivity and identity in a single request.
-
-## Payload Schema
-
-Always use this exact shape. Do not add or remove fields.
-
-```json
-{
-  "name": "Nick Konstantino",
-  "timestamp": "2026-03-26T12:00:00.000Z",
-  "source": "interactive | cron | api"
-}
+```
+https://tldr-scheduler.vercel.app
 ```
 
-| Field       | Type   | Description                                      |
-|-------------|--------|--------------------------------------------------|
-| `name`      | string | Full name of the person sending the ping         |
-| `timestamp` | string | ISO-8601 UTC timestamp at the moment of the ping |
-| `source`    | string | How the ping was triggered                       |
+## Setup (Claude Code only)
 
-## Default Configuration
+MCP gives Claude direct tool access. Skip this in Claude.ai — it falls back to REST automatically.
 
-- **Webhook URL:** `https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06`
-- **Name:** `Nick Konstantino`
-- **API Endpoint:** `POST /api/ping`
-
-## Interactive Mode (Claude.ai)
-
-Follow these steps when a user asks you to ping the webhook:
-
-1. **Confirm details.** If the user hasn't specified a name, use `Nick Konstantino`. If they haven't specified a URL, use the default webhook URL above.
-2. **Send the ping** by calling the API:
-   ```
-   POST {BASE_URL}/api/ping
-   Content-Type: application/json
-
-   {
-     "name": "Nick Konstantino",
-     "webhookUrl": "https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06"
-   }
-   ```
-3. **Report the result.** On success, tell the user: "Ping sent at {timestamp}." On failure, report the status code and error.
-
-If you don't have an HTTP tool available, construct and display the `curl` command so the user can run it:
 ```bash
-curl -X POST https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Nick Konstantino","timestamp":"2026-03-26T12:00:00.000Z","source":"interactive"}'
+claude mcp add tldr-scheduler --transport http https://tldr-scheduler.vercel.app/api/mcp
 ```
 
-## Automated Mode (Scheduler)
+If the server requires an API key:
+```bash
+claude mcp add tldr-scheduler --transport http https://tldr-scheduler.vercel.app/api/mcp --header "Authorization: Bearer YOUR_MCP_API_KEY"
+```
 
-When invoked by the Scheduler skill as a target, this skill expects:
+## Defaults
 
-**Input payload:**
+- **Webhook URL:** `https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5`
+- **Name:** `Nick Konstantino`
+
+## Interactive Mode
+
+If the user hasn't specified a name or URL, use the defaults above.
+
+**If MCP tools are available**, use `send_ping`.
+
+**Otherwise**, POST to the REST API:
+```
+POST {BASE_URL}/api/ping
+Content-Type: application/json
+
+{ "name": "Nick Konstantino", "webhookUrl": "https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5" }
+```
+
+Report the result: "Ping sent at {timestamp}." on success, or the status code and error on failure.
+
+## Automated Mode
+
+**Input:**
 ```json
-{
-  "name": "Nick Konstantino",
-  "webhookUrl": "https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06"
-}
+{ "name": "Nick Konstantino", "webhookUrl": "https://webhook.site/..." }
 ```
 
-**Return contract:**
+**Output:**
 ```json
-{
-  "success": true,
-  "statusCode": 200,
-  "timestamp": "2026-03-26T12:00:00.000Z"
-}
+{ "success": true, "statusCode": 200, "timestamp": "2026-03-26T12:00:00.000Z" }
 ```
 
-No user confirmation is needed in automated mode. Execute immediately and return the result.
-
-## Error Handling
-
-- If the webhook returns a non-2xx status, retry **once** after a 2-second wait.
-- If the retry also fails, return `{ "success": false, "statusCode": <code>, "timestamp": "<time>" }`.
-- Never retry more than once — webhook endpoints may be rate-limited.
-
-## Example Conversation
-
-**User:** Ping the webhook.
-**Assistant:** Sending a ping to the webhook as Nick Konstantino...
-
-Ping sent successfully at 2026-03-26T14:32:01.000Z.
-
-**User:** Ping the webhook with the name "Jane Doe".
-**Assistant:** Sending a ping as Jane Doe...
-
-Ping sent successfully at 2026-03-26T14:33:15.000Z.
+No user confirmation needed. Retry once on non-2xx. Never retry more than once.

@@ -1,9 +1,9 @@
-# TLDR Skills
+# TLDR scheduler
 
-Two Claude Skills — **Scheduler** and **Ping** — wired together with a Vercel cron that proves they work.
+Two Claude scheduler — **Scheduler** and **Ping** — wired together with a Vercel cron that proves they work.
 
-**Vercel URL:** https://tldr-skills.vercel.app
-**Webhook target:** `https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06`
+**Vercel URL:** https://tldr-scheduler.vercel.app
+**Webhook target:** `https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5`
 
 ---
 
@@ -17,7 +17,7 @@ npm i -g vercel
 vercel --prod
 
 # Set environment variables in Vercel dashboard:
-#   WEBHOOK_URL = https://webhook.site/81899de5-23f4-4704-a3c0-22795ad6fc06
+#   WEBHOOK_URL = https://webhook.site/5b5e0c04-0da6-43a6-91b9-027506dbd2a5
 #   PING_NAME   = Nick Konstantino
 #   CRON_SECRET = <any random string>
 #   MCP_API_KEY = <any random string>  (optional — secures /api/mcp)
@@ -31,7 +31,7 @@ Tasks are stored in Upstash Redis so they survive Vercel cold starts. To set it 
 2. Vercel auto-populates `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
 3. Run `vercel env pull` to sync them locally for development
 
-The Vercel cron runs daily at midnight UTC — a Hobby tier constraint. On a Pro plan, update `vercel.json` to `"schedule": "*/5 * * * *"` for 5-minute frequency, or use **Upstash QStash** (already in the Vercel marketplace) for sub-minute scheduling without upgrading.
+The Vercel cron currently runs every 15 minutes (`*/15 * * * *`) — configurable in `vercel.json`. Vercel Pro supports up to once-per-minute frequency. Use **Upstash QStash** (already in the Vercel marketplace) for sub-minute scheduling.
 
 To test locally:
 ```bash
@@ -47,12 +47,12 @@ curl -X POST http://localhost:3000/api/ping \
 
 The API is also exposed as a remote MCP server, giving Claude structured tool definitions instead of relying on SKILL.md prose. This means more reliable tool calls and no need to describe HTTP contracts in natural language.
 
-**Endpoint:** `https://tldr-skills.vercel.app/api/mcp`
+**Endpoint:** `https://tldr-scheduler.vercel.app/api/mcp`
 
 **Add to Claude.ai:**
 1. Go to **Settings → Connectors**
 2. Click **Add custom connector**
-3. Enter a name (e.g. `TLDR Skills`) and paste the endpoint URL above
+3. Enter a name (e.g. `TLDR scheduler`) and paste the endpoint URL above
 4. Click **Add**
 
 **Available tools:**
@@ -92,23 +92,27 @@ ping/SKILL.md          Ping skill for Claude (interactive/automated)
 
 ## Design Decisions
 
-**Plain serverless functions, no framework.** Next.js adds routing config, layouts, and build steps that contribute nothing here. Each API file is a self-contained handler — easy to read, easy to deploy, easy to reason about. For a 2-hour build, every abstraction must earn its place.
+**Dual-mode scheduler (interactive + automated).** Every SKILL.md defines two invocation paths: interactive (conversational, with confirmations and clarifications) and automated (machine-callable, with an explicit payload contract and no prompting). This directly solves the "must work in both Claude.ai and the Scheduler" requirement without duplicating skill logic. scheduler are also kept well under a ~500 line limit — not because of a hard constraint here, but as a deliberate discipline to prevent context bloat. A skill that requires a wall of prose to describe is usually a skill that's doing too much.
+
+**scheduler handle their own setup.** Each SKILL.md includes a Setup section that instructs Claude Code to register the MCP server if it isn't already configured. In Claude.ai, where shell access isn't available, the scheduler fall back to REST automatically — the MCP connector can still be added manually via Settings → Connectors, but it isn't a hard requirement.
+
+**Plain serverless functions, no framework.** Next.js adds routing config, layouts, and build steps that contribute nothing here. Each API file is a self-contained handler — easy to read, easy to deploy, easy to reason about. Every abstraction must earn its place.
 
 **Zero npm dependencies.** Node 18+ on Vercel has native `fetch`, `crypto.randomUUID()`, and JSON parsing. The Upstash Redis client is just `fetch` calls — no SDK needed. Every dependency is a liability: install time, version conflicts, supply-chain risk. For this scope, the standard library is enough.
 
-**Upstash Redis via REST API, not a full ORM.** Tasks need to survive Vercel cold starts, so an in-memory store won't do. Upstash Redis is the right call: free tier, Vercel marketplace native, and accessible via plain HTTP — no client library. The store interface (`createTask`, `listTasks`, `getTask`, `updateTask`, `deleteTask`) is a clean seam: swap the Redis hash for Postgres or DynamoDB by changing one file.
+**Upstash Redis via REST API, not a full ORM.** Tasks need to survive Vercel cold starts, so an in-memory store won't do. Upstash Redis is the right call: Vercel marketplace native, accessible via plain HTTP, no client library. The store interface (`createTask`, `listTasks`, `getTask`, `updateTask`, `deleteTask`) is a clean seam: swap the Redis hash for Postgres or DynamoDB by changing one file.
 
-**`target.skill` + `target.payload` as the composability primitive.** The Scheduler doesn't know what a ping is. It just stores a skill name and a payload, then invokes the skill when the schedule fires. This is the Unix pipe philosophy: the scheduler is a generic orchestrator, and skills are the units of composition. Adding a new skill never requires modifying the scheduler.
+**`target.skill` + `target.payload` as the composability primitive.** The Scheduler doesn't know what a ping is. It stores a skill name and a payload, then invokes the skill when the schedule fires. This is the Unix pipe philosophy: the scheduler is a generic orchestrator, scheduler are the units of composition. Adding a new skill never requires modifying the scheduler. Currently, `ping-webhook` is the only skill with full execution wired up — other scheduler return an invocation contract (`{ triggered: true, skill, payload }`) that's ready to be handled as new scheduler are implemented.
 
-**Dual-mode skills (interactive + automated).** Every SKILL.md defines two invocation paths: interactive (user-facing, with confirmations and clarifications) and automated (machine-callable, with an explicit payload contract and no prompting). This directly solves the "must work in both Claude.ai and the Scheduler" requirement without duplicating skill logic.
+**MCP is thin now, but intentional.** Right now, pinging a webhook isn't complex enough to need a full MCP layer — but building it didn't take long, and it speaks to the broader vision. As HubSpot and Slack scheduler get added, entire multi-step workflows (fetch → diff → interpret → notify) can be encapsulated as a single MCP tool. The layer is there when it needs to carry real weight.
 
-**Deploy the cron first.** The webhook check is binary — it works or it doesn't. Every minute of delay is a minute without evidence. Ship the cron on the first deploy, iterate on everything else.
-
-**Honest about the Hobby tier cron limit.** Vercel's free tier caps cron at once per day. The architecture is correct — `/api/cron/scheduler` evaluates all due tasks on every invocation — but the trigger frequency is constrained by the plan. The fix is one line in `vercel.json` (`"*/5 * * * *"`) on Pro, or Upstash QStash on Hobby. No workarounds that obscure the real constraint.
+**Vercel cron + Redis as the scheduling backbone.** Claude's memory is ephemeral and inaccessible between sessions — it can't be the scheduler's source of truth. Redis stores task definitions as JSON blobs that the cron endpoint reads on every tick. The cron loops through active tasks, fires any that are due, and updates `lastRun` and `nextRun`. The architecture is correct at any tick frequency; the only knob is `vercel.json`.
 
 ---
 
 ## Composability
+
+Every workflow is an MCP tooling opportunity. The current setup is straightforward to extend — HubSpot and Slack each have existing MCP servers, so the integration layer is mostly about defining the right skill contracts and wiring them into the Scheduler.
 
 ### The Core Convention
 
@@ -119,39 +123,24 @@ For any skill to work in both Claude.ai (interactive) and the Scheduler (automat
 3. **An automated contract** — an input payload schema and a return schema, with no user prompts.
 4. **A skill name** — a stable identifier the Scheduler uses in `target.skill`.
 
-The Scheduler references skills by name and passes their expected payload. Skills don't know they're being scheduled. This decoupling means any new skill automatically works with the Scheduler if it follows the convention above.
+The Scheduler references scheduler by name and passes their expected payload. scheduler don't know they're being scheduled. This decoupling means any new skill automatically works with the Scheduler if it follows the convention above.
 
-### Automations with HubSpot and Slack Skills
+### Automations with HubSpot and Slack scheduler
 
-**1. Weekly Pipeline Digest**
-Scheduler + HubSpot + Slack: "Every Monday at 9am, pull deals closed last week from HubSpot, summarize win/loss ratio and total revenue, and post the digest to #sales-updates in Slack."
+**1. Check Deal Status + Celebrate Closure**
 
-Task configuration:
-```json
-{
-  "schedule": { "type": "cron", "expression": "0 9 * * 1" },
-  "target": {
-    "skill": "hubspot-deals",
-    "payload": { "filter": "closedLastWeek", "summarize": true }
-  },
-  "chain": {
-    "skill": "slack-message",
-    "payload": { "channel": "#sales-updates" }
-  }
-}
-```
-This introduces **task chaining** — the output of one skill feeds the input of the next. The Scheduler handles the plumbing; skills remain independent.
+At a set interval, the Scheduler calls a HubSpot skill to fetch current deal states and diff them against the last stored snapshot in Redis. If a deal moved to Closed Won, that delta gets passed to Claude via API — not to produce a raw data dump, but to generate something worth reading: a message that puts the win in context (team member, deal size, progress toward quota). Claude's output goes straight to Slack via the Slack skill. The snapshot updates. Next tick, same check.
 
-**2. Uptime Monitor with Alerting**
-Scheduler + Ping + Slack: "Every 5 minutes, ping the production health endpoint. If it returns non-200, send an alert to #oncall in Slack with the status code and timestamp."
+This pattern — fetch → diff → interpret → notify — is the template for most sales intelligence automations.
 
-This adds **conditional execution** — the Scheduler checks the return contract of the first skill and only chains to Slack if `success: false`. The pattern generalizes: any skill's return value can gate downstream execution.
+**2. Deal Follow-Up Nudge**
 
-**3. Customer Onboarding Pipeline**
-Scheduler + HubSpot: "When a deal moves to Closed Won, wait 24 hours, then pull the company info from HubSpot and create an onboarding checklist task."
+Identify deals that have gone cold: no activity in 14+ days, or manually flagged for follow-up by a rep. On a Friday morning schedule, the HubSpot skill surfaces these deals with owner info, and the Slack skill sends a direct message to each owner — not a channel blast, a personal nudge. The message can include the last activity date, the deal value, and a suggested next step generated by Claude. Optionally chains to calendar or email tooling to make acting on the nudge frictionless.
 
-This introduces **event-triggered scheduling** — instead of a cron, the trigger is a state change in an external system. The Scheduler polls HubSpot on an interval, and the skill filters for the relevant event. The `once` schedule type supports the delayed one-shot execution.
+**3. New Deal Onboarding**
+
+When a deal moves to Closed Won, schedule a one-shot task 24 hours out. That task pulls company and contact info from HubSpot and uses the Slack skill to notify the onboarding team with everything they need to kick off: company name, deal size, key contacts, and a Claude-generated summary of any notes from the deal record. The `once` schedule type handles the delay; the Scheduler's `lastRun` tracking ensures it fires exactly once.
 
 ### What This Gets You
 
-These three patterns — chaining, conditional execution, and event triggers — cover the majority of business automation needs. And they all compose from the same building blocks: a generic scheduler, skills with standardized contracts, and a task schema that separates "when" from "what." No skill needs to know about any other skill. The Scheduler doesn't need to know what it's scheduling. That's the whole point.
+These three patterns — change detection, proactive nudging, and event-triggered one-shots — cover the majority of sales workflow automation. They all compose from the same building blocks: a generic scheduler, scheduler with standardized contracts, and a task schema that separates "when" from "what." No skill needs to know about any other skill. The Scheduler doesn't need to know what it's scheduling. That's the whole point.

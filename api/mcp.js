@@ -3,13 +3,13 @@
 /**
  * MCP (Model Context Protocol) server — Streamable HTTP transport.
  *
- * Exposes the Scheduler and Ping skills as structured tool definitions so
+ * Exposes the Scheduler and Ping scheduler as structured tool definitions so
  * Claude.ai (and any MCP-compatible client) can invoke them without needing
  * to interpret SKILL.md prose. Each POST is a stateless JSON-RPC 2.0 request;
  * no session state is maintained between calls.
  *
  * Add to Claude.ai: Project Settings → Integrations → paste this URL:
- *   https://tldr-skills.vercel.app/api/mcp
+ *   https://tldr-scheduler.vercel.app/api/mcp
  *
  * Auth: set MCP_API_KEY in Vercel env vars. If unset, the endpoint is open
  * (fine for demo; add the key before sharing with untrusted users).
@@ -19,7 +19,7 @@ const { sendPing, DEFAULT_WEBHOOK_URL } = require('../lib/webhook');
 const { createTask, listTasks, getTask, updateTask, deleteTask } = require('../lib/store');
 
 const MCP_PROTOCOL_VERSION = '2024-11-05';
-const SERVER_INFO = { name: 'tldr-skills', version: '1.0.0' };
+const SERVER_INFO = { name: 'tldr-scheduler', version: '1.0.0' };
 
 // ---------------------------------------------------------------------------
 // Tool definitions — these are what Claude.ai sees instead of SKILL.md prose
@@ -255,7 +255,7 @@ async function callTool(name, args = {}) {
       if (task.target.skill === 'ping-webhook') {
         result = await sendPing({ ...task.target.payload, source: 'api' });
       } else {
-        // For skills not directly executable here, return the invocation contract
+        // For scheduler not directly executable here, return the invocation contract
         // so the caller (Claude or another orchestrator) can dispatch it.
         result = {
           triggered: true,
