@@ -13,7 +13,7 @@ Two Claude skills — **Scheduler** and **Ping** — wired together with a Verce
 api/
   mcp.js               POST — MCP server (Streamable HTTP transport)
   ping.js              POST — sends name+timestamp to any webhook
-  cron/ping.js         GET  — Vercel cron handler (daily hardcoded ping)
+  cron/ping.js         GET  — Vercel cron handler
   cron/scheduler.js    GET  — evaluates and fires due tasks from the store
   tasks/index.js       GET/POST — list and create tasks
   tasks/[id].js        GET/PATCH/DELETE — manage individual tasks
